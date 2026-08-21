@@ -4,7 +4,9 @@ import btcrenaud.puzzle.PuzzleResult
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.isPuzzleBlockPosition
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
 import btcrenaud.puzzle.objective.notifyCooldown
@@ -63,6 +65,9 @@ class PatternPlacementEntry(
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
 
+    @Help("Detection radius in blocks around the grid. The preview is only rendered for players standing in the grid's world, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
+
     @Help("Expected materials for the grid pattern, in row-major order.")
     val pattern: List<PatternSlotDef> = emptyList(),
     @Help("World origin of the grid (the block at row 0, column 0).")
@@ -116,8 +121,10 @@ class PatternPlacementDisplay(
     private val misplacedCount = ConcurrentHashMap<UUID, Int>()
     private val renderer = PuzzleRenderers.blocks
 
-    override fun onPlayerAdd(player: Player) {
-        super.onPlayerAdd(player)
+    override fun puzzleAnchors(player: Player): List<org.bukkit.Location> =
+        listOf(gridOrigin.get(player).toBukkitLocation()).withoutUnsetAnchors()
+
+    override fun onPuzzleActivate(player: Player) {
         if (player !in this) return
         correctlyPlaced[player.uniqueId] = mutableSetOf()
         misplacedCount[player.uniqueId] = 0
@@ -141,8 +148,7 @@ class PatternPlacementDisplay(
         }
     }
 
-    override fun onPlayerRemove(player: Player) {
-        super.onPlayerRemove(player)
+    override fun onPuzzleDeactivate(player: Player) {
         PuzzleScheduler.runAtEntity(player) { renderer.clearOwner(player, puzzleId) }
         correctlyPlaced.remove(player.uniqueId)
         misplacedCount.remove(player.uniqueId)

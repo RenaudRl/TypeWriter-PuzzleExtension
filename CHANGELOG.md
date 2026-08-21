@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2 — 2026-08-20
+
+Puzzles are now bound to the place they were built.
+
+- **New field on every puzzle: `activationRadius`** (default `16` blocks). A puzzle only renders
+  and runs for a player standing in the world of its own positions, within that radius of one of
+  them. `0` disables the distance check only — the world check always applies.
+- **Fixed: a puzzle was drawn in every dimension.** Client-side blocks and particles carry
+  coordinates but no world, so a laser grid configured in the Overworld was painted in front of the
+  player in the Nether, the End, or any other world they visited. The laser trace now stops
+  outright when the player is not in the world of the emitters.
+- **Fixed: a puzzle started as soon as the player joined its audience**, whatever the distance.
+  A memory sequence could play its whole pattern to someone thousands of blocks away, or in
+  another world. The sequence now starts when the player reaches the board.
+- Walking away from a puzzle clears its board on the client and cancels its pending animations;
+  coming back starts a fresh session. The attempt budget, the failure cooldown, `timeLimit` and
+  `lifespan` are now armed on arrival instead of on audience join.
+
 ## 0.1 — 2026-08-12
 
 First release.

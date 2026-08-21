@@ -60,13 +60,21 @@ Every puzzle entry shares the objective options below.
 | `fact` | Fact incremented by `amount` on completion. |
 | `lifespan` | Seconds before the puzzle expires regardless of activity. |
 | `isShared` | Whether the puzzle state is shared by the audience. |
+| `activationRadius` | Detection radius in blocks around the puzzle positions. `0` keeps the world check only. |
 
 ## Behaviour worth knowing
 
-**A session starts when the player joins the audience.** Starting a puzzle clears the progress, the
-attempt budget and the failure cooldown. `maxAttempts` is therefore a per-session budget, not a
-lifetime one — a player who exhausted it simply restarts the puzzle. A puzzle that is already
-solved is never reopened, so completion stays idempotent.
+**A puzzle belongs to one world, and to the ground around it.** Being in the audience is not
+enough: the puzzle only renders and runs for a player standing in the world of its own positions,
+within `activationRadius` blocks of at least one of them. This is not cosmetic — a client-side
+block or a particle carries coordinates and no world, so without the gate a board configured in one
+dimension was drawn in every dimension the player visited.
+
+**A session starts when the player reaches the puzzle.** Arriving clears the progress, the
+attempt budget and the failure cooldown, and arms `timeLimit` and `lifespan`. `maxAttempts` is
+therefore a per-session budget, not a lifetime one — a player who exhausted it simply restarts the
+puzzle. Walking away clears the board on the client and cancels the pending animations. A puzzle
+that is already solved is never reopened, so completion stays idempotent.
 
 **Completion fires once.** `completionMessage`, the fact write, `onComplete` and the chain progress
 are all emitted from a single accepted transition, so a duplicated interaction event cannot trigger

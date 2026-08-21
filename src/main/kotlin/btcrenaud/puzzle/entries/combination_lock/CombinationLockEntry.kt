@@ -3,7 +3,9 @@ package btcrenaud.puzzle.entries.combination_lock
 import btcrenaud.puzzle.PuzzleResult
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
 import btcrenaud.puzzle.isPuzzleBlockPosition
@@ -58,6 +60,8 @@ class CombinationLockEntry(
     override val onLifespanExpire: Ref<TriggerableEntry> = emptyRef(),
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
+    @Help("Detection radius in blocks. The lock only answers players standing in the world of the digits, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
 
     @Help("Digit button/lever positions. Index 0 maps to digit 0, index 1 to digit 1, etc.")
     val digits: List<Var<Position>> = emptyList(),
@@ -93,14 +97,15 @@ class CombinationLockDisplay(
 
     private val currentInputIndex = ConcurrentHashMap<UUID, Int>()
 
-    override fun onPlayerAdd(player: Player) {
-        super.onPlayerAdd(player)
+    override fun puzzleAnchors(player: Player): List<org.bukkit.Location> =
+        digits.map { it.get(player).toBukkitLocation() }.withoutUnsetAnchors()
+
+    override fun onPuzzleActivate(player: Player) {
         if (player !in this || digits.isEmpty() || code.isEmpty()) return
         currentInputIndex[player.uniqueId] = 0
     }
 
-    override fun onPlayerRemove(player: Player) {
-        super.onPlayerRemove(player)
+    override fun onPuzzleDeactivate(player: Player) {
         currentInputIndex.remove(player.uniqueId)
     }
 

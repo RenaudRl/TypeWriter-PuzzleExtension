@@ -4,7 +4,9 @@ import btcrenaud.puzzle.PuzzleResult
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.isPuzzleBlockPosition
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
 import btcrenaud.puzzle.objective.notifyCooldown
@@ -63,6 +65,9 @@ class LeverOrderEntry(
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
 
+    @Help("Detection radius in blocks around the levers. The board is only rendered for players standing in their world, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
+
     @Help("Levers in this puzzle, each with a position and activation order index.")
     val levers: List<LeverDef> = emptyList(),
     @Help("Sound played on correct lever activation.")
@@ -104,8 +109,10 @@ class LeverOrderDisplay(
     private val baseLeverStates = ConcurrentHashMap<UUID, MutableMap<String, Switch>>()
     private val renderer = PuzzleRenderers.blocks
 
-    override fun onPlayerAdd(player: Player) {
-        super.onPlayerAdd(player)
+    override fun puzzleAnchors(player: Player): List<org.bukkit.Location> =
+        leverDefs.map { it.position.get(player).toBukkitLocation() }.withoutUnsetAnchors()
+
+    override fun onPuzzleActivate(player: Player) {
         if (player !in this || leverDefs.isEmpty()) return
         nextExpected[player.uniqueId] = 0
         activatedLevers[player.uniqueId] = mutableSetOf()
@@ -128,9 +135,8 @@ class LeverOrderDisplay(
 
     }
 
-    override fun onPlayerRemove(player: Player) {
+    override fun onPuzzleDeactivate(player: Player) {
         PuzzleScheduler.runAtEntity(player) { renderer.clearOwner(player, puzzleId) }
-        super.onPlayerRemove(player)
         nextExpected.remove(player.uniqueId)
         activatedLevers.remove(player.uniqueId)
         sortedOrder.remove(player.uniqueId)

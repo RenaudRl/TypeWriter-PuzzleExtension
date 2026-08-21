@@ -4,7 +4,9 @@ import btcrenaud.puzzle.PuzzleResult
 import btcrenaud.puzzle.PuzzleService
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
 import com.typewritermc.core.entries.Ref
@@ -68,6 +70,9 @@ class PedestalOfferingEntry(
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
 
+    @Help("Detection radius in blocks around the pedestal. The puzzle only runs for players standing in its world, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
+
     // === Pedestal Offering Specific ===
     @Help("The block position that serves as the pedestal.")
     val targetPosition: Var<Position> = ConstVar(Position.ORIGIN),
@@ -118,9 +123,11 @@ class PedestalOfferingDisplay(
 
     private val pendingDroppedOffers = ConcurrentHashMap.newKeySet<UUID>()
 
-    override fun onPlayerRemove(player: Player) {
+    override fun puzzleAnchors(player: Player): List<org.bukkit.Location> =
+        listOf(targetPosition.get(player).toBukkitLocation()).withoutUnsetAnchors()
+
+    override fun onPuzzleDeactivate(player: Player) {
         pendingDroppedOffers.remove(player.uniqueId)
-        super.onPlayerRemove(player)
     }
 
     override fun tick() {

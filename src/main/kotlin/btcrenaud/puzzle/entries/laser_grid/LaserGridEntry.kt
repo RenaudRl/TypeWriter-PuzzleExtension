@@ -3,9 +3,11 @@ package btcrenaud.puzzle.entries.laser_grid
 import btcrenaud.puzzle.PuzzleResult
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.render.PuzzleRenderers
 import com.typewritermc.core.entries.Ref
 import com.typewritermc.core.entries.emptyRef
@@ -109,6 +111,8 @@ class LaserGridEntry(
     override val onLifespanExpire: Ref<TriggerableEntry> = emptyRef(),
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
+    @Help("Detection radius in blocks. The beams are only drawn for players standing in the world of the emitters, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
 
     @Help("Laser emitters in this puzzle.")
     val emitters: List<LaserEmitterDef> = emptyList(),
@@ -144,8 +148,13 @@ class LaserGridDisplay(
     private val mirrorDirections = ConcurrentHashMap<UUID, ConcurrentHashMap<String, BlockFace>>()
     private val renderer = PuzzleRenderers.blocks
 
-    override fun onPlayerAdd(player: Player) {
-        super.onPlayerAdd(player)
+    override fun puzzleAnchors(player: Player): List<org.bukkit.Location> =
+        (emitterDefs.map { it.position.get(player).toBukkitLocation() } +
+            mirrorDefs.map { it.position.get(player).toBukkitLocation() } +
+            receiverDefs.map { it.position.get(player).toBukkitLocation() })
+            .withoutUnsetAnchors()
+
+    override fun onPuzzleActivate(player: Player) {
         if (player !in this) return
         val directions = ConcurrentHashMap<String, BlockFace>()
         mirrorDirections[player.uniqueId] = directions
@@ -158,15 +167,16 @@ class LaserGridDisplay(
         }
     }
 
-    override fun onPlayerRemove(player: Player) {
+    override fun onPuzzleDeactivate(player: Player) {
         mirrorDirections.remove(player.uniqueId)
         PuzzleScheduler.runAtEntity(player) { renderer.clearOwner(player, puzzleId) }
-        super.onPlayerRemove(player)
     }
 
     override fun tick() {
         tickCounter++
         if (tickCounter % 5 != 0) return
+        // `players` lists the whole audience; `player !in this` below keeps the
+        // trace for the ones actually standing at the board.
         val players = this.players
         if (players.isEmpty()) return
 
@@ -272,6 +282,12 @@ class LaserGridDisplay(
         var reflectionsLeft = maxReflections
         val density = beamDensity.get(player)
         var lastSpawn = 0.0
+        // A particle packet carries coordinates and no world: sending one for a
+        // beam that lives in another world draws it in front of the player,
+        // wherever they are. This is what made the grid visible in every
+        // dimension before the activation gate existed. Blocks of another world
+        // also belong to another Folia region, so the whole trace is dropped.
+        if (startPos.world?.uid != player.world.uid) return
 
         while (reflectionsLeft >= 0) {
             if (pos.y < -64 || pos.y > 320) break

@@ -4,7 +4,9 @@ import btcrenaud.puzzle.PuzzleResult
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.isPuzzleBlockPosition
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.core.puzzleReplayDelayTicks
 import btcrenaud.puzzle.objective.handlePuzzleResult
@@ -63,6 +65,8 @@ class MemorySequenceEntry(
     override val onLifespanExpire: Ref<TriggerableEntry> = emptyRef(),
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
+    @Help("Detection radius in blocks. The sequence only starts once the player stands in the world of the buttons, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
 
     @Help("Buttons the player can click, with positions, materials, and sounds.")
     val buttons: List<MemoryButtonDef> = emptyList(),
@@ -117,8 +121,10 @@ class MemorySequenceDisplay(
     private val scheduledTasks = ConcurrentHashMap<UUID, MutableSet<PuzzleScheduler.TaskHandle>>()
     private val renderer = PuzzleRenderers.blocks
 
-    override fun onPlayerAdd(player: Player) {
-        super.onPlayerAdd(player)
+    override fun puzzleAnchors(player: Player): List<org.bukkit.Location> =
+        buttonDefs.map { it.position.get(player).toBukkitLocation() }.withoutUnsetAnchors()
+
+    override fun onPuzzleActivate(player: Player) {
         if (player !in this) return
         val buttonCount = buttonDefs.size
         if (buttonCount < 2) return
@@ -157,10 +163,9 @@ class MemorySequenceDisplay(
         scheduledTasks.remove(player.uniqueId)?.forEach(PuzzleScheduler.TaskHandle::cancel)
     }
 
-    override fun onPlayerRemove(player: Player) {
+    override fun onPuzzleDeactivate(player: Player) {
         scheduledTasks.remove(player.uniqueId)?.forEach(PuzzleScheduler.TaskHandle::cancel)
         PuzzleScheduler.runAtEntity(player) { renderer.clearOwner(player, puzzleId) }
-        super.onPlayerRemove(player)
         sequences.remove(player.uniqueId)
         playerProgress.remove(player.uniqueId)
         canInput.remove(player.uniqueId)

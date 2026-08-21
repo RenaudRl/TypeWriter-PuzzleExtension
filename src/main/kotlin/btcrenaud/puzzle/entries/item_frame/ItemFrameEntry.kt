@@ -3,7 +3,9 @@ package btcrenaud.puzzle.entries.item_frame
 import btcrenaud.puzzle.PuzzleResult
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
 import btcrenaud.puzzle.objective.notifyCooldown
@@ -64,6 +66,9 @@ class ItemFrameEntry(
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
 
+    @Help("Detection radius in blocks around the frames. The puzzle only runs for players standing in their world, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
+
     @Help("Frame targets with position, correct rotation (0-7), and optional required item.")
     val frameTargets: List<FrameTargetDef> = emptyList(),
     @Help("If true, the item inside the frame must also match the required item.")
@@ -117,8 +122,10 @@ class ItemFrameDisplay(
 
     private val logger = LoggerFactory.getLogger(ItemFrameDisplay::class.java)
 
-    override fun onPlayerAdd(player: Player) {
-        super.onPlayerAdd(player)
+    override fun puzzleAnchors(player: Player): List<org.bukkit.Location> =
+        frameTargets.map { it.position.get(player).toBukkitLocation() }.withoutUnsetAnchors()
+
+    override fun onPuzzleActivate(player: Player) {
         if (player !in this || frameTargets.isEmpty()) return
         val state = mutableMapOf<Int, Boolean>()
         frameTargets.indices.forEach { state[it] = false }
@@ -159,8 +166,7 @@ class ItemFrameDisplay(
         }
     }
 
-    override fun onPlayerRemove(player: Player) {
-        super.onPlayerRemove(player)
+    override fun onPuzzleDeactivate(player: Player) {
         solvedFrames.remove(player.uniqueId)
     }
 

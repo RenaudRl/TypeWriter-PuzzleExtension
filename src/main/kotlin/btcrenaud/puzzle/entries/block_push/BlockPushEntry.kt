@@ -5,7 +5,9 @@ import btcrenaud.puzzle.PuzzleService
 import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.isPuzzleBlockPosition
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
 import btcrenaud.puzzle.objective.notifyCooldown
@@ -66,6 +68,8 @@ class BlockPushEntry(
     override val onLifespanExpire: Ref<TriggerableEntry> = emptyRef(),
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(false),
+    @Help("Detection radius in blocks. The board is only rendered for players standing in its world, within this radius. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
 
     // === Block Push Specific ===
     @Help("Pushable blocks with their positions.")
@@ -121,14 +125,17 @@ class BlockPushDisplay(
     private val pushedBlocks = ConcurrentHashMap<UUID, MutableMap<Int, Location>>()
     private val renderer = PuzzleRenderers.blocks
 
-    override fun onPlayerAdd(player: Player) {
-        super.onPlayerAdd(player)
+    override fun puzzleAnchors(player: Player): List<Location> =
+        (pushBlocks.map { it.position.get(player).toBukkitLocation() } +
+            targetHoles.map { it.position.get(player).toBukkitLocation() })
+            .withoutUnsetAnchors()
+
+    override fun onPuzzleActivate(player: Player) {
         if (player !in this) return
         placeVisuals(player)
     }
 
-    override fun onPlayerRemove(player: Player) {
-        super.onPlayerRemove(player)
+    override fun onPuzzleDeactivate(player: Player) {
         pushedBlocks.remove(player.uniqueId)
         PuzzleScheduler.runAtEntity(player) { renderer.clearOwner(player, puzzleId) }
     }

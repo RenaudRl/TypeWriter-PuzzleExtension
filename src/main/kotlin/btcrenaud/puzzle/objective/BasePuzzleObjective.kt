@@ -50,8 +50,22 @@ interface BasePuzzleObjectiveEntry {
     val onLifespanExpire: Ref<TriggerableEntry>
     val lifespan: Var<Int>
     val isShared: Var<Boolean>
+
+    /**
+     * Detection radius, in blocks, around the puzzle positions.
+     *
+     * The puzzle only renders and runs for a player standing in the world of its
+     * own positions **and** within this radius of at least one of them. `0`
+     * disables the distance check only — the world check always applies, since a
+     * client-side board carries coordinates but no dimension.
+     */
+    val activationRadius: Var<Double>
+
     val criteria: List<Criteria>
 }
+
+/** Default detection radius applied to every puzzle entry. */
+const val DEFAULT_PUZZLE_ACTIVATION_RADIUS: Double = 16.0
 
 /** Default used by every entry so existing pages keep working without edits. */
 const val DEFAULT_PUZZLE_COMPLETION_MESSAGE: String = "<green>Puzzle complété !"

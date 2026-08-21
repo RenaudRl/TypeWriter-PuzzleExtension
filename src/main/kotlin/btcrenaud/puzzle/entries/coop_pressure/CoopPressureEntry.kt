@@ -6,7 +6,9 @@ import btcrenaud.puzzle.PuzzleType
 import btcrenaud.puzzle.isStandingOnPuzzlePlate
 import btcrenaud.puzzle.toPuzzleBlockCoordinate
 import btcrenaud.puzzle.objective.BasePuzzleObjectiveEntry
+import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_ACTIVATION_RADIUS
 import btcrenaud.puzzle.objective.DEFAULT_PUZZLE_COMPLETION_MESSAGE
+import btcrenaud.puzzle.objective.withoutUnsetAnchors
 import btcrenaud.puzzle.objective.PuzzleObjectiveDisplay
 import btcrenaud.puzzle.objective.handlePuzzleResult
 import com.typewritermc.core.entries.Ref
@@ -54,6 +56,9 @@ class CoopPressureEntry(
     override val onLifespanExpire: Ref<TriggerableEntry> = emptyRef(),
     override val lifespan: Var<Int> = ConstVar(0),
     override val isShared: Var<Boolean> = ConstVar(true), // Coop puzzles are shared by default
+
+    @Help("Detection radius in blocks around the plates. Players outside it — or in another world — do not count toward the puzzle. 0 = no distance limit (the world is still enforced).")
+    override val activationRadius: Var<Double> = ConstVar(DEFAULT_PUZZLE_ACTIVATION_RADIUS),
 
     @Help("Plate positions where players must stand.")
     val plates: List<Var<Position>> = emptyList(),
@@ -187,8 +192,10 @@ class CoopPressureDisplay(
         }
     }
 
-    override fun onPlayerRemove(player: Player) {
-        super.onPlayerRemove(player)
+    override fun puzzleAnchors(player: Player): List<Location> =
+        plates.map { it.get(player).toBukkitLocation() }.withoutUnsetAnchors()
+
+    override fun onPuzzleDeactivate(player: Player) {
         positionSnapshots.remove(player.uniqueId)
         resetHold(player)
     }
