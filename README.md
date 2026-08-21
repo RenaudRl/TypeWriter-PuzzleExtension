@@ -101,6 +101,10 @@ position the player is told, and the position is logged as a warning.
 - Java 25
 - TypeWriter engine `0.9.0-beta-175`
 
+## Documentation
+
+Full documentation available at [BTC Studio Docs](https://docs.borntocraftstudio.net/extensions/free/puzzle/).
+
 ## Building
 
 ```bash
