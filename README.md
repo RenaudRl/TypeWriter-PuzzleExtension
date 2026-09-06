@@ -1,6 +1,6 @@
 # Puzzle Extension
 
-![Java Version](https://img.shields.io/badge/Java-25-orange)
+![Java Version](https://img.shields.io/badge/Java-21-orange)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Target](https://img.shields.io/badge/Target-Paper%20/%20Folia-blue)
 
@@ -98,8 +98,8 @@ position the player is told, and the position is logged as a warning.
 ## Requirements
 
 - Paper or Folia, Minecraft 1.21.x
-- Java 25
-- TypeWriter engine `0.9.0-beta-175`
+- Java 21
+- TypeWriter engine `0.9.0-beta-176`
 
 ## Documentation
 
