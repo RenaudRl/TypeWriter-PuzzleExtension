@@ -1,11 +1,15 @@
 ﻿plugins {
-    kotlin("jvm") version "2.3.20"
-    kotlin("plugin.serialization") version "2.3.20"
-    id("com.typewritermc.module-plugin") version "2.1.0"
+    kotlin("jvm") version "2.2.10"
+    kotlin("plugin.serialization") version "2.2.10"
+    id("com.typewritermc.module-plugin") version "2.2.0"
 }
 
 group = "btcrenaud"
-version = "0.2"
+version = "0.3"
+
+base {
+    archivesName.set("PuzzleExtension")
+}
 
 repositories {
     mavenCentral()
@@ -41,15 +45,15 @@ typewriter {
             Typewriter triggers. The public build uses only official Typewriter and
             Paper APIs; BTC-specific integrations remain in the custom distribution.
         """.trimIndent()
-        engineVersion = "0.9.0-beta-175"
+        engineVersion = "0.9.0-beta-176"
         channel = com.typewritermc.moduleplugin.ReleaseChannel.BETA
         paper()
     }
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(21)
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
