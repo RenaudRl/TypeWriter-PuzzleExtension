@@ -1,11 +1,11 @@
-﻿plugins {
+plugins {
     kotlin("jvm") version "2.2.10"
     kotlin("plugin.serialization") version "2.2.10"
     id("com.typewritermc.module-plugin") version "2.2.0"
 }
 
 group = "btcrenaud"
-version = "0.3"
+version = "0.4"
 
 base {
     archivesName.set("PuzzleExtension")
@@ -45,7 +45,7 @@ typewriter {
             Typewriter triggers. The public build uses only official Typewriter and
             Paper APIs; BTC-specific integrations remain in the custom distribution.
         """.trimIndent()
-        engineVersion = "0.9.0-beta-176"
+        engineVersion = "0.9.0-beta-177"
         channel = com.typewritermc.moduleplugin.ReleaseChannel.BETA
         paper()
     }
