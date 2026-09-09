@@ -21,6 +21,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import btcrenaud.puzzle.render.PuzzleVisualRefreshListener
+import org.bukkit.event.HandlerList
+import org.bukkit.event.Listener
 import org.koin.java.KoinJavaComponent
 import org.slf4j.LoggerFactory
 
@@ -31,6 +34,16 @@ class PuzzleInitializer : Initializable {
     private val service = KoinJavaComponent.get<PuzzleService>(PuzzleService::class.java)
     private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var autoSaveTask: PuzzleScheduler.TaskHandle? = null
+
+    /**
+     * Listeners registered on the engine plugin, kept so [shutdown] can remove them.
+     *
+     * The engine plugin outlives an extension reload: a listener left in the
+     * Bukkit handler lists keeps firing with classes from a classloader that was
+     * already closed, which surfaces as `NoClassDefFoundError` on the first class
+     * the old instance had not touched yet.
+     */
+    private val registeredListeners = mutableListOf<Listener>()
 
     override suspend fun initialize() {
         logger.info("Initializing Puzzle extension...")
@@ -59,11 +72,8 @@ class PuzzleInitializer : Initializable {
         PuzzleScheduler.runTask {
             // Replays the client-side board after a chunk is sent to the player.
             // Without it the initial visuals are dropped by the client.
-            plugin.server.pluginManager.registerEvents(
-                btcrenaud.puzzle.render.PuzzleVisualRefreshListener(),
-                plugin,
-            )
-            plugin.server.pluginManager.registerEvents(PuzzleListener(), plugin)
+            register(PuzzleVisualRefreshListener())
+            register(PuzzleListener())
             logger.info("PuzzleListener registered")
         }
 
@@ -80,8 +90,28 @@ class PuzzleInitializer : Initializable {
         logger.info("Puzzle extension initialized")
     }
 
+    private fun register(listener: Listener) {
+        synchronized(registeredListeners) { registeredListeners += listener }
+        plugin.server.pluginManager.registerEvents(listener, plugin)
+    }
+
+    /**
+     * Removes every listener this extension put on the engine plugin.
+     *
+     * Done synchronously rather than through the scheduler: Paper/Folia refuses
+     * new tasks while the plugin is disabling, so a scheduled unregistration
+     * would silently never run and leave the stale listener behind.
+     */
+    private fun unregisterListeners() {
+        val listeners = synchronized(registeredListeners) {
+            registeredListeners.toList().also { registeredListeners.clear() }
+        }
+        listeners.forEach { runCatching { HandlerList.unregisterAll(it) } }
+    }
+
     override suspend fun shutdown() {
         logger.info("Shutting down Puzzle extension...")
+        unregisterListeners()
         autoSaveTask?.cancel()
         autoSaveTask = null
         withContext(Dispatchers.IO) {

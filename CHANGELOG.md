@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5 — 2026-09-09
+
+Fix release.
+
+- **Fixed: `NoClassDefFoundError: btcrenaud/puzzle/render/PuzzleRenderers` after an extension
+  reload.** The extension registered its two Bukkit listeners on the engine plugin and never
+  removed them. The engine plugin outlives a reload, so the old listener instances stayed in the
+  handler lists and kept firing against a classloader that had already been closed — every class
+  they had not touched before the reload then failed to load. Both listeners are now unregistered
+  in `shutdown()`, which also stops them from piling up one extra copy per reload.
+- `PuzzleVisualRefreshListener` resolves the renderer once, at construction, so a callback already
+  scheduled when the extension goes down can no longer trigger a class load on a dead loader.
+
 ## 0.2 — 2026-08-20
 
 Puzzles are now bound to the place they were built.

@@ -24,6 +24,16 @@ import org.bukkit.event.player.PlayerRespawnEvent
  */
 class PuzzleVisualRefreshListener : Listener {
 
+    /**
+     * Resolved once, at construction time.
+     *
+     * A scheduled callback can outlive the extension classloader; touching
+     * [PuzzleRenderers] from inside the callback would then trigger a class load
+     * on a closed loader and throw `NoClassDefFoundError`. Holding the renderer
+     * in a field keeps the callback free of any class resolution.
+     */
+    private val blocks: PuzzleRenderer = PuzzleRenderers.blocks
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     fun onChunkSentToPlayer(event: PlayerChunkLoadEvent) {
         val player = event.player
@@ -32,7 +42,7 @@ class PuzzleVisualRefreshListener : Listener {
         // One tick later: the chunk packet is already queued, so the replay is
         // guaranteed to be applied on top of it instead of before it.
         PuzzleScheduler.runAtEntityLater(player, 1L) {
-            if (player.isOnline) PuzzleRenderers.blocks.resendChunk(player, chunkX, chunkZ)
+            if (player.isOnline) blocks.resendChunk(player, chunkX, chunkZ)
         }
     }
 
@@ -44,12 +54,12 @@ class PuzzleVisualRefreshListener : Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     fun onQuit(event: PlayerQuitEvent) {
-        PuzzleRenderers.blocks.forget(event.player)
+        blocks.forget(event.player)
     }
 
     private fun scheduleFullReplay(player: Player) {
         PuzzleScheduler.runAtEntityLater(player, RESPAWN_REPLAY_DELAY_TICKS) {
-            if (player.isOnline) PuzzleRenderers.blocks.resendAll(player)
+            if (player.isOnline) blocks.resendAll(player)
         }
     }
 
